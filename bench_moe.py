@@ -139,6 +139,11 @@ total = sum(counts.values())
 
 probs = torch.tensor([v / total for k, v in counts.items()], device="cuda")
 
+def flush_gpu_cache(size_mb=256):
+    x = torch.empty(size_mb * 1024 * 1024 // 4, dtype=torch.float32, device="cuda")
+    x += 1
+    torch.cuda.synchronize()
+
 def run_up(B):
     
     time = 0.
@@ -229,6 +234,9 @@ def run_down(B):
 
         config = {'BLOCK_SIZE_M': 16, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 1}
 
+        flush_gpu_cache()
+        flush_gpu_cache()
+        flush_gpu_cache()
 
         with profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],

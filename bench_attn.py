@@ -2,14 +2,6 @@ import torch
 from torch.profiler import profile, ProfilerActivity
 import flashinfer
 
-# Qwen3-32B
-# num_qo_heads = 64
-# num_kv_heads = 8
-
-# Qwen3-30B-A3B
-num_qo_heads = 32
-num_kv_heads = 4
-
 head_dim = 128
 data_type = torch.bfloat16
 
@@ -21,7 +13,12 @@ decode_wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(
                     use_tensor_cores=True,
                 )
 
-def run(B):
+def flush_gpu_cache(size_mb=256):
+    x = torch.empty(size_mb * 1024 * 1024 // 4, dtype=torch.float32, device="cuda")
+    x += 1
+    torch.cuda.synchronize()
+
+def run(B, num_qo_heads, num_kv_heads):
     
     time = 0.
 
@@ -78,6 +75,10 @@ def run(B):
         kv_cache *= 0.1
         q *= 0.1
 
+        flush_gpu_cache()
+        flush_gpu_cache()
+        flush_gpu_cache()
+
         with profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
             acc_events=True
@@ -95,7 +96,8 @@ def run(B):
 # print(prof.events().table())
 
 def start(B = 1):
-    run(B)
+    run(B, 64, 8)
+    run(B, 32, 4)
     
 for B in [1, 2, 4, 8, 16]:
     print('')

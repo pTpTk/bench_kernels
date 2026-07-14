@@ -2,6 +2,11 @@ import torch
 import torch.nn.functional as F
 from torch.profiler import profile, ProfilerActivity
 
+def flush_gpu_cache(size_mb=256):
+    x = torch.empty(size_mb * 1024 * 1024 // 4, dtype=torch.float32, device="cuda")
+    x += 1
+    torch.cuda.synchronize()
+
 def run(m, n, k):
     
     time = 0.
@@ -25,6 +30,10 @@ def run(m, n, k):
 
         x *= 0.1
         w *= 0.1
+
+        flush_gpu_cache()
+        flush_gpu_cache()
+        flush_gpu_cache()
 
         with profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
